@@ -6,6 +6,10 @@ variable "DOCKER_TOKEN" {
   default = ""
 }
 
+variable "DOCKER_USER" {
+  default = ""
+}
+
 variable "FQDN" {
   default = "example.myftp.org"
 }
@@ -41,10 +45,10 @@ job "webapp" {
       driver = "docker"
 
       config {
-        image = "maciel04/webapp:${var.IMAGE_TAG}"
+        image = "${var.DOCKER_USER}/webapp:${var.IMAGE_TAG}"
         network_mode = "host"
         auth {
-          username = "maciel04"
+          username = "${var.DOCKER_USER}"
           password = "${var.DOCKER_TOKEN}"
         }
 
