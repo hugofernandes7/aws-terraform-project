@@ -110,5 +110,5 @@ docs/           Documentation and architecture diagram
 
 ## Notes
 
-- The Docker Hub namespace is **not** hardcoded. Set the `DOCKER_USER` and `DOCKER_HUB_MACIEL` (token) CI/CD variables in GitLab with your own Docker Hub account; the pipeline passes `DOCKER_USER` and `DOCKER_TOKEN` to the Nomad job.
+- The Docker Hub namespace is **not** hardcoded. Set the `DOCKER_USER` and `DOCKER_TOKEN` CI/CD variables in GitLab with your own Docker Hub account; the pipeline passes both to the Nomad job.
 - The AWS Academy Sandbox environment has a limit of **9 EC2 instances** — keep this in mind when tuning the ASG.
