@@ -1,0 +1,23 @@
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars is git-ignored so your secrets stay local.
+
+# AWS
+profile = "default"
+region  = "eu-west-1"
+
+# GitLab runner registration
+gitlab_token = "glrt-xxxxxxxxxxxxxxxxxxxx"
+gitlab_url   = "https://gitlab.example.com"
+
+# SSH key pair for EC2 access.
+# Generate one with: ssh-keygen -t ed25519 -f my-key-aws
+# then paste the contents of my-key-aws.pub below.
+ssh_public_key = "ssh-ed25519 AAAA... your-key"
+
+# No-IP dynamic DNS (https://www.noip.com)
+noip_username = "you@example.com"
+noip_password = "your-noip-password"
+noip_hostname = "your-host.myftp.org"
+
+# Public FQDN served by the webapp (usually the same as noip_hostname)
+fqdn = "your-host.myftp.org"

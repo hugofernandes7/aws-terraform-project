@@ -1,0 +1,32 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+
+build_image:
+  stage: build
+  image: docker:latest
+
+  services:
+    - name: docker:24.0.5-dind
+
+  script:
+    - echo "$DOCKER_HUB_MACIEL" | docker login -u maciel04 --password-stdin
+    - docker build -t maciel04/webapp:$IMAGE_TAG -f app/Dockerfile app
+    - docker push maciel04/webapp:$IMAGE_TAG
+    - docker build -t maciel04/nomad-runner:$IMAGE_TAG -f nomad-runner/Dockerfile .
+    - docker push maciel04/nomad-runner:$IMAGE_TAG
+
+deploy:
+  stage: deploy
+  image: maciel04/nomad-runner:$IMAGE_TAG
+
+
+  script:
+    - nomad job run
+      -var="IMAGE_TAG=$IMAGE_TAG"
+      -var="DOCKER_TOKEN=$DOCKER_HUB_MACIEL"
+      nomad-jobs/webapp.hcl
+
