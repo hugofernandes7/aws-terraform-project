@@ -1,49 +1,49 @@
 # AWS – Build and Scale the DevOps Way
 
-Infraestrutura na AWS provisionada com **Terraform**, configurada com **Ansible** e com deployment automático de uma aplicação em containers através de **Nomad** e de uma pipeline **GitLab CI/CD**.
+Infrastructure on AWS provisioned with **Terraform**, configured with **Ansible**, and with automatic deployment of a containerized application through **Nomad** and a **GitLab CI/CD** pipeline.
 
-## Arquitetura
+## Architecture
 
-O projeto implementa o seguinte ambiente (diagrama do enunciado):
+The project implements the following environment (diagram from the assignment):
 
-![Arquitetura](docs/architecture.png)
+![Architecture](docs/architecture.png)
 
-| Nº  | Componente do diagrama | Implementação neste projeto                          |
-| --- | ---------------------- | ---------------------------------------------------- |
-| 1   | GitLab Server          | GitLab (`gitlab.estig.ipb.pt`) + Container Registry no **Docker Hub** |
-| 2   | GitLab Runner          | EC2 com runner registado (`aws/runner.tf`)           |
-| 3   | Container Orchestrator | **Nomad Server** (`aws/nomad_server.tf`)             |
-| 4   | Auto Scaling Group     | Clientes Nomad em ASG (`aws/asg.tf`)                 |
-| 5   | Load Balancer          | Network Load Balancer (`aws/aws_lb.tf`) + No-IP DNS  |
+| #   | Diagram component      | Implementation in this project                              |
+| --- | ---------------------- | ----------------------------------------------------------- |
+| 1   | GitLab Server          | GitLab (`gitlab.estig.ipb.pt`) + Container Registry on **Docker Hub** |
+| 2   | GitLab Runner          | EC2 with registered runner (`aws/runner.tf`)                |
+| 3   | Container Orchestrator | **Nomad Server** (`aws/nomad_server.tf`)                    |
+| 4   | Auto Scaling Group     | Nomad clients in an ASG (`aws/asg.tf`)                      |
+| 5   | Load Balancer          | Network Load Balancer (`aws/aws_lb.tf`) + No-IP DNS         |
 
-O acesso SSH às instâncias privadas é feito através de um **Bastion Host** (`aws/bastion_host.tf`).
+SSH access to the private instances is done through a **Bastion Host** (`aws/bastion_host.tf`).
 
-## Pré-requisitos
+## Prerequisites
 
 - [Terraform](https://www.terraform.io/) >= 1.x
-- [AWS CLI](https://aws.amazon.com/cli/) configurado (`aws configure`)
+- [AWS CLI](https://aws.amazon.com/cli/) configured (`aws configure`)
 - [Ansible](https://www.ansible.com/)
-- Conta [No-IP](https://www.noip.com) (DNS dinâmico)
+- A [No-IP](https://www.noip.com) account (dynamic DNS)
 
-> **Nenhum segredo está no repositório.** Os valores sensíveis são fornecidos em `terraform.tfvars` (ignorado pelo Git).
+> **No secrets are stored in the repository.** Sensitive values are provided in `terraform.tfvars` (ignored by Git).
 
-## Passos
+## Steps
 
-### 1. Configurar variáveis
+### 1. Configure variables
 
 ```bash
 cd aws
 cp terraform.tfvars.example terraform.tfvars
-# editar terraform.tfvars com os teus valores
+# edit terraform.tfvars with your own values
 ```
 
-Gerar o par de chaves SSH e colar a chave **pública** em `ssh_public_key`:
+Generate the SSH key pair and paste the **public** key into `ssh_public_key`:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/my-key-aws
 ```
 
-### 2. Provisionar a infraestrutura (Terraform)
+### 2. Provision the infrastructure (Terraform)
 
 ```bash
 terraform init
@@ -51,64 +51,64 @@ terraform plan
 terraform apply
 ```
 
-### 3. Configurar o acesso SSH
+### 3. Configure SSH access
 
-Gera o `~/.ssh/config` a partir dos outputs do Terraform:
+Generate `~/.ssh/config` from the Terraform outputs:
 
 ```bash
 ./connect.sh
 ```
 
-Depois é possível ligar via Bastion: `ssh bastion`, `ssh nomad-server`, `ssh runner`.
+You can then connect via the Bastion: `ssh bastion`, `ssh nomad-server`, `ssh runner`.
 
-### 4. Configurar os servidores (Ansible)
+### 4. Configure the servers (Ansible)
 
-Instala e configura o Nomad, o Nginx e o TLS:
+Installs and configures Nomad, Nginx and TLS:
 
 ```bash
 cd ../ansible
 ansible-playbook -i inventory.ini playbooks/site.yml --ask-vault-pass
 ```
 
-> `--ask-vault-pass` é necessário porque os certificados TLS estão protegidos com **Ansible Vault** (`group_vars/all/vault.yml`).
+> `--ask-vault-pass` is required because the TLS certificates are protected with **Ansible Vault** (`group_vars/all/vault.yml`).
 
-### 5. Fazer deploy da aplicação (GitLab CI/CD)
+### 5. Deploy the application (GitLab CI/CD)
 
-Define a variável `NOMAD_ADDR` no GitLab (endereço do Nomad Server) e faz push:
+Set the `NOMAD_ADDR` variable in GitLab (the Nomad Server address) and push:
 
 ```bash
 git push
 ```
 
-A pipeline (`.gitlab-ci.yml`):
-1. faz **build** das imagens Docker (webapp + nomad-runner);
-2. **publica** no Docker Hub;
-3. executa `nomad job run nomad-jobs/webapp.hcl` para fazer o deploy.
+The pipeline (`.gitlab-ci.yml`):
+1. **builds** the Docker images (webapp + nomad-runner);
+2. **publishes** them to Docker Hub;
+3. runs `nomad job run nomad-jobs/webapp.hcl` to deploy.
 
-### 6. Atualizar o DNS dinâmico (No-IP)
+### 6. Update the dynamic DNS (No-IP)
 
-Aponta o domínio No-IP para um IP saudável do Load Balancer:
+Point the No-IP domain to a healthy Load Balancer IP:
 
 ```bash
 cd ../aws
-export NOIP_HOST="o_teu_host.myftp.org"
-export NOIP_USER="o_teu_email"
-export NOIP_PASS="a_tua_password"
+export NOIP_HOST="your_host.myftp.org"
+export NOIP_USER="your_email"
+export NOIP_PASS="your_password"
 ./scripts/update-noip.sh
 ```
 
-## Estrutura do projeto
+## Project structure
 
 ```text
-aws/            Infraestrutura Terraform (VPC, bastion, nomad, ASG, NLB, runner)
-ansible/        Playbooks de configuração (Nomad, Nginx, TLS) + Vault
-nomad-jobs/     Definição do job Nomad da aplicação (webapp.hcl)
-nomad-runner/   Imagem Docker com Nomad CLI usada pela pipeline
-app/            Dockerfile e configuração da aplicação web
-docs/           Documentação e diagrama de arquitetura
+aws/            Terraform infrastructure (VPC, bastion, nomad, ASG, NLB, runner)
+ansible/        Configuration playbooks (Nomad, Nginx, TLS) + Vault
+nomad-jobs/     Nomad job definition for the application (webapp.hcl)
+nomad-runner/   Docker image with the Nomad CLI used by the pipeline
+app/            Dockerfile and web application configuration
+docs/           Documentation and architecture diagram
 ```
 
-## Notas
+## Notes
 
-- As imagens Docker usam o namespace `maciel04` (públicas). Para replicar com a tua conta, substitui `maciel04` em `nomad-jobs/webapp.hcl` e `.gitlab-ci.yml`.
-- O ambiente AWS Academy Sandbox tem um limite de **9 instâncias EC2** — tem isto em conta ao ajustar o ASG.
+- The Docker images use the `maciel04` namespace (public). To replicate with your own account, replace `maciel04` in `nomad-jobs/webapp.hcl` and `.gitlab-ci.yml`.
+- The AWS Academy Sandbox environment has a limit of **9 EC2 instances** — keep this in mind when tuning the ASG.
